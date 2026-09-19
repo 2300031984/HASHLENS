@@ -66,7 +66,16 @@ class Settings(BaseSettings):
     @classmethod
     def parse_allowed_origins(cls, value: Union[str, List[str]]) -> List[str]:
         if isinstance(value, str):
-            return [origin.strip() for origin in value.split(",") if origin.strip()]
+            origins = [origin.strip() for origin in value.split(",") if origin.strip()]
+            for default in [
+                "http://localhost:8501",
+                "http://127.0.0.1:8501",
+                "http://localhost:8000",
+                "http://127.0.0.1:8000",
+            ]:
+                if default not in origins:
+                    origins.append(default)
+            return origins
         return value
 
     def ensure_directories(self) -> None:

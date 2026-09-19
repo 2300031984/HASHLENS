@@ -28,6 +28,11 @@ services:
         value: "false"
       - key: DATABASE_URL
         value: sqlite:////app/data/hashlens.db
+      - key: ALLOWED_ORIGINS
+        fromService:
+          type: web
+          name: hashlens-dashboard
+          property: url
     healthCheckPath: /api/v1/health
 
   - type: web
