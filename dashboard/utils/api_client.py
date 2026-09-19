@@ -34,6 +34,77 @@ class HashLensClient:
             if host == "0.0.0.0":
                 host = "127.0.0.1"
             self.base_url = base_url or f"http://{host}:{settings.API_PORT}{settings.API_V1_PREFIX}"
+        self.auth_token: Optional[str] = None
+
+    def _get_headers(self, token: Optional[str] = None) -> Dict[str, str]:
+        headers = {}
+        t = token or self.auth_token
+        if t:
+            headers["Authorization"] = f"Bearer {t}"
+        return headers
+
+    def register(self, email: str, username: str, password: str) -> Dict[str, Any]:
+        """Register a new user account."""
+        try:
+            resp = requests.post(
+                f"{self.base_url}/auth/register",
+                json={"email": email, "username": username, "password": password},
+                timeout=5,
+            )
+            if resp.status_code == 201:
+                return resp.json()
+            if resp.status_code in (400, 422):
+                detail = resp.json().get("detail", "Registration failed.")
+                if isinstance(detail, list):
+                    detail = detail[0].get("msg", "Validation error")
+                return {"error": detail}
+        except Exception as e:
+            return {"error": f"Registration request failed: {str(e)}"}
+        return {"error": "Registration failed."}
+
+    def login(self, login: str, password: str) -> Dict[str, Any]:
+        """Authenticate user login and retrieve JWT access token."""
+        try:
+            resp = requests.post(
+                f"{self.base_url}/auth/login",
+                json={"login": login, "password": password},
+                timeout=5,
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                self.auth_token = data.get("access_token")
+                return data
+            if resp.status_code in (400, 401, 422):
+                detail = resp.json().get("detail", "Invalid credentials.")
+                if isinstance(detail, list):
+                    detail = detail[0].get("msg", "Validation error")
+                return {"error": detail}
+        except Exception as e:
+            return {"error": f"Login request failed: {str(e)}"}
+        return {"error": "Authentication failed."}
+
+    def get_current_user(self, token: Optional[str] = None) -> Dict[str, Any]:
+        """Fetch current user profile using JWT token."""
+        headers = self._get_headers(token)
+        try:
+            resp = requests.get(f"{self.base_url}/auth/me", headers=headers, timeout=5)
+            if resp.status_code == 200:
+                return resp.json()
+            if resp.status_code == 401:
+                return {"error": resp.json().get("detail", "Unauthorized")}
+        except Exception as e:
+            return {"error": f"Get current user request failed: {str(e)}"}
+        return {"error": "Failed to fetch user profile."}
+
+    def logout(self, token: Optional[str] = None) -> Dict[str, Any]:
+        """Logout user session."""
+        headers = self._get_headers(token)
+        try:
+            requests.post(f"{self.base_url}/auth/logout", headers=headers, timeout=3)
+        except Exception:
+            pass
+        self.auth_token = None
+        return {"message": "Successfully logged out"}
 
     @property
     def is_production(self) -> bool:

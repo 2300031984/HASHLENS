@@ -13,7 +13,7 @@ from backend.app.core.config import settings
 from backend.app.core.logging import logger
 from backend.app.core.security import SecurityHeadersMiddleware
 from backend.app.db.database import init_db
-from backend.app.api.routes import health, hashing, comparison, history, chain, evidence
+from backend.app.api.routes import health, hashing, comparison, history, chain, evidence, auth
 
 
 @asynccontextmanager
@@ -72,6 +72,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 # Mount Versioned API Routes under /api/v1
 v1_prefix = settings.API_V1_PREFIX
 app.include_router(health.router, prefix=v1_prefix)
+app.include_router(auth.router, prefix=v1_prefix)
 app.include_router(hashing.router, prefix=v1_prefix)
 app.include_router(comparison.router, prefix=v1_prefix)
 app.include_router(history.router, prefix=v1_prefix)

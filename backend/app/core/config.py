@@ -5,7 +5,7 @@ Centralized Pydantic-based settings with environment variable overrides.
 
 from pathlib import Path
 from typing import List, Optional, Union
-from pydantic import AliasChoices, Field, field_validator
+from pydantic import AliasChoices, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # Security Headers
     ENABLE_HSTS: bool = False
 
+    # JWT Authentication
+    JWT_SECRET_KEY: str = "dev-secret-key-change-in-production-123456789"
+    JWT_ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+
     # CORS
     ALLOWED_ORIGINS: Union[str, List[str]] = [
         "http://localhost:8501",
@@ -77,6 +82,22 @@ class Settings(BaseSettings):
                     origins.append(default)
             return origins
         return value
+
+    @model_validator(mode="after")
+    def validate_production_jwt_secret(self) -> "Settings":
+        if self.APP_ENV.lower() == "production":
+            insecure_defaults = [
+                "dev-secret-key-change-in-production-123456789",
+                "change-this-in-production",
+                "secret",
+                "password",
+            ]
+            if not self.JWT_SECRET_KEY or self.JWT_SECRET_KEY in insecure_defaults or len(self.JWT_SECRET_KEY) < 16:
+                raise ValueError(
+                    "Insecure or missing JWT_SECRET_KEY in production mode. "
+                    "You must configure a strong, secure JWT_SECRET_KEY (min 16 chars) when APP_ENV=production."
+                )
+        return self
 
     def ensure_directories(self) -> None:
         """Ensure necessary runtime directories exist."""
