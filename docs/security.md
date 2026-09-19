@@ -79,3 +79,29 @@ HashLens includes explicit warnings in both its REST API metadata and SOC Dashbo
    * **Health Check Diagnostics Error Masking:** The `/api/v1/health` endpoint returns a generic `"unhealthy"` status on database connectivity failures, strictly masking raw SQL error messages, database credentials, or internal connection strings.
    * **Safe Migration Management:** Alembic versioned migrations run non-destructive, explicit schema updates, eliminating blind `DROP TABLE` commands or accidental data destruction in production.
 
+---
+
+## 8. OWASP API Security Assessment & Verification Matrix
+
+| Security Area | Tested | Result | Defense Mechanism |
+| :--- | :---: | :---: | :--- |
+| **Authentication (API2)** | YES | PASS | Argon2id memory-hard password hashing + JWT HS256 signature verification |
+| **JWT Claims Security** | YES | PASS | Minimal claims (`sub`, `iat`, `exp`), secret validation in production |
+| **BOLA / IDOR Defense (API1)** | YES | PASS | Strict `WHERE user_id = current_user.id` + HTTP 404 existence masking |
+| **Mass Assignment (API3)** | YES | PASS | Pydantic schema filtering; client payloads cannot assign `user_id` or `is_active` |
+| **Resource Limits (API4)** | YES | PASS | 100 MB max upload limit, 4 KB–16 MB chunk bounds, input truncation |
+| **Function Gating (API5)** | YES | PASS | `/chain/simulate-tamper` blocked in production (`APP_ENV=production` $\rightarrow$ 403) |
+| **Path Traversal / Null Byte** | YES | PASS | `SafeFileService.sanitize_filename` strips slashes, `..`, and `\x00` |
+| **SQL Injection Defense** | YES | PASS | 100% SQLAlchemy ORM parameterized queries |
+| **Rate Limiting** | YES | PASS | 120 req/min sliding window per client IP with `Retry-After` header |
+| **Security Headers (API8)** | YES | PASS | `X-Content-Type-Options`, `X-Frame-Options`, `CSP`, `X-Request-ID` |
+| **Error Masking** | YES | PASS | Generic 500/400 error structures; stack traces and paths never leaked |
+| **Hash Chain Integrity** | YES | PASS | $H_n = \text{SHA256}(\text{Record}_n + H_{n-1})$ with explicit transaction rollbacks |
+| **Secrets & Container** | YES | PASS | Non-root `hashlens` user in Dockerfiles; 0 committed secrets |
+| **Dependency Audit** | YES | PASS | `pip-audit` verified 0 known vulnerabilities |
+
+### Residual Limitations
+1. **Process-Local Rate Limiting**: The sliding-window rate limiter is currently process-local in memory. In multi-worker distributed clusters, a shared Redis store should be introduced in future scaling phases.
+2. **Advisory Type Sniffing**: Magic-byte inspection provides advisory classification only and does not replace dedicated sandbox malware detonation engines.
+
+
