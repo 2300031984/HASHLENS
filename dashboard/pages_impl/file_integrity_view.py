@@ -92,3 +92,5 @@ def render():
         with st.expander("View Chunk Block Map"):
             df_chunks = pd.DataFrame(fp["chunk_fingerprints"])
             st.dataframe(df_chunks, use_container_width=True)
+    else:
+        st.info("No tracked files selected yet. Select or upload a file above to establish a Version 1 baseline or check file integrity.")

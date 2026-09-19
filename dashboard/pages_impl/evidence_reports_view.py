@@ -85,3 +85,5 @@ def render():
 
             with st.expander("Preview HTML Report"):
                 st.components.v1.html(html_report, height=600, scrolling=True)
+    else:
+        st.info("No evidence reports generated yet. Upload an asset above to generate a self-authenticating Evidence Report.")

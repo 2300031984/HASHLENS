@@ -77,4 +77,4 @@ def render():
             })
         st.dataframe(pd.DataFrame(df_records), use_container_width=True, hide_index=True)
     else:
-        st.info("Tamper-Evident Hash Chain ledger is empty.")
+        st.info("No integrity events yet. HASHLENS will create chain records as tracked integrity events are recorded.")

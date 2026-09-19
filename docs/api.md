@@ -1,197 +1,213 @@
-# HashLens REST API Specification
+# HASHLENS REST API Specification
 
-The HashLens REST API enables automated integration with SIEM platforms, SOAR playbooks, CI/CD code verification pipelines, and forensic investigative tools.
+The HASHLENS REST API provides a high-performance RESTful interface for cryptographic hashing, chunk forensics, version tracking, tamper-evident ledger auditing, and evidence report generation.
 
-* **Base URL:** `http://localhost:8000/api/v1`
+* **Base URL:** `http://localhost:8000/api/v1` (or `<HASHLENS_API>/api/v1`)
 * **Interactive Swagger UI:** `http://localhost:8000/docs`
 * **ReDoc Documentation:** `http://localhost:8000/redoc`
 * **OpenAPI Specification JSON:** `http://localhost:8000/api/v1/openapi.json`
 
 ---
 
-## 1. Global Security Headers & Rate Limiting
+## 1. Security Headers, Rate Limiting & Authentication
 
-All responses include defensive security headers:
+### Security Headers
+All API responses carry defensive security headers:
 ```http
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
-X-XSS-Protection: 1; mode=block
 Content-Security-Policy: default-src 'self' ...
 X-Request-ID: <32-char-uuid>
-X-RateLimit-Limit: 120
-X-RateLimit-Remaining: 119
 ```
 
 ### Rate Limiting Policy
-* Maximum **120 requests per minute** per client IP.
-* Exceeding the rate limit returns `429 Too Many Requests` with a `Retry-After: 60` header.
+* Sliding-window rate limiter: **120 requests per minute** per client IP.
+* Exceeding the rate limit returns `429 Too Many Requests` with `Retry-After: 60`.
+
+### Authentication & Authorization
+Protected endpoints require a JWT bearer token in the `Authorization` header:
+```http
+Authorization: Bearer YOUR_JWT_ACCESS_TOKEN
+```
+Tokens are acquired via `POST /api/v1/auth/login` and expire after 60 minutes.
+
+### Data Ownership & Isolation
+All user-owned resources (`TrackedFile`, `FileVersion`, `ChainRecord`, `EvidenceReport`) are strictly scoped to the authenticated `user_id`. Attempting to access another user's resource returns `404 Not Found` (existence masking).
 
 ---
 
 ## 2. API Endpoints Catalog
 
-### 2.1 Platform & Health
+### 2.1 Authentication & Profile
+
+#### `POST /api/v1/auth/register`
+Registers a new user account. Passwords are stored using Argon2id memory-hard KDF.
+
+**Request Body:**
+```json
+{
+  "email": "user@example.com",
+  "username": "analyst",
+  "password": "YOUR_SECURE_PASSWORD"
+}
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "usr_7a8b9c",
+  "email": "user@example.com",
+  "username": "analyst",
+  "is_active": true,
+  "created_at": "2026-09-20T03:30:00+00:00"
+}
+```
+
+#### `POST /api/v1/auth/login`
+Authenticates credentials and returns a JWT access token.
+
+**Request Body:**
+```json
+{
+  "login": "analyst",
+  "password": "YOUR_SECURE_PASSWORD"
+}
+```
+
+**Response (200 OK):**
+```json
+{
+  "access_token": "YOUR_JWT_ACCESS_TOKEN",
+  "token_type": "bearer",
+  "user": {
+    "id": "usr_7a8b9c",
+    "email": "user@example.com",
+    "username": "analyst"
+  }
+}
+```
+
+#### `GET /api/v1/auth/me`
+Retrieves current authenticated user profile. Requires Bearer Token.
+
+---
+
+### 2.2 Health & Platform Metadata
 
 #### `GET /api/v1/health`
-Returns system status, platform version, database connectivity, and tamper-evident chain audit state.
+Returns system status, app version (`1.0.0`), database status, and user chain health state.
 
-**Response:**
+**Response (200 OK):**
 ```json
 {
   "status": "online",
   "app": "HashLens",
   "version": "1.0.0",
-  "environment": "development",
-  "uptime_seconds": 341.2,
+  "environment": "production",
   "database": "healthy",
   "chain_health": "CHAIN_VALID"
 }
 ```
 
 #### `GET /api/v1/algorithms`
-Returns supported cryptographic hash functions and comprehensive collision & security metadata.
+Returns supported cryptographic hash algorithms (`md5`, `sha1`, `sha256`, `sha512`) and security advisories.
 
 ---
 
-### 2.2 Cryptographic Hashing
+### 2.3 Cryptographic Hashing & Forensics
 
 #### `POST /api/v1/hash/text`
-Computes cryptographic digests for text strings.
+Computes cryptographic digests for text strings across requested algorithms.
 
 **Request Body:**
 ```json
 {
-  "text": "Cybersecurity forensic string",
+  "text": "Forensic verification test string",
   "algorithms": ["sha256", "sha512", "md5"]
 }
 ```
 
-**Response (200 OK):**
-```json
-{
-  "input_length_chars": 29,
-  "input_length_bytes": 29,
-  "hashes": {
-    "sha256": "81f18ba...",
-    "sha512": "b6a127...",
-    "md5": "a4d32f..."
-  },
-  "algorithms_used": ["sha256", "sha512", "md5"]
-}
-```
-
 #### `POST /api/v1/hash/file`
-Processes an uploaded file via streaming chunked I/O, generating whole-file digests and chunk fingerprints.
+Processes an uploaded file via streaming chunked I/O.
 
-**Form Data:**
-* `file`: Binary file upload
-* `chunk_size`: Optional integer (4,096 to 16,777,216 bytes; default: 1,048,576)
-
-**Response (200 OK):**
-```json
-{
-  "filename": "evidence.bin",
-  "original_filename": "evidence.bin",
-  "size_bytes": 2048576,
-  "size_human": "2.0 MiB",
-  "extension": ".bin",
-  "mime_type": "application/octet-stream",
-  "file_category": "Binary / Unknown",
-  "is_type_advisory": true,
-  "hashes": {
-    "md5": "...",
-    "sha1": "...",
-    "sha256": "...",
-    "sha512": "..."
-  },
-  "chunk_size": 1048576,
-  "chunk_count": 2,
-  "chunk_fingerprints": [
-    {"index": 0, "offset": 0, "length": 1048576, "sha256": "..."},
-    {"index": 1, "offset": 1048576, "length": 1000000, "sha256": "..."}
-  ],
-  "timestamp": "2026-09-19T18:30:00.000000+00:00",
-  "metadata_fingerprint": "..."
-}
-```
+**Multipart Form:**
+* `file`: Binary file upload (max 100 MB)
+* `chunk_size`: Integer (4,096 to 16,777,216 bytes; default: 65,536)
 
 #### `POST /api/v1/avalanche`
-Calculates bit-flip avalanche metrics between two text inputs.
+Calculates bit-flip avalanche metrics between two text payloads.
+
+#### `POST /api/v1/compare`
+Compares two fingerprint objects and returns a 7-tier diagnostic assessment (`NO_CHANGE`, `CONTENT_MODIFICATION`, `SIZE_CHANGE`, `STRUCTURAL_CHANGE`, `METADATA_CHANGE`, `FILE_TYPE_CHANGE`, `MAJOR_REPLACEMENT`, `INCONCLUSIVE`).
 
 ---
 
-### 2.3 Forensic Comparison & Diagnostics
+### 2.4 Version Tracking & Asset Baselines
 
-#### `POST /api/v1/compare/files`
-Accepts two multipart files (`file_a` and `file_b`), computes fingerprints, and delivers chunk diffs and diagnostic assessment.
+#### `GET /api/v1/files`
+Lists tracked assets owned by the current user (`Authorization: Bearer YOUR_JWT_ACCESS_TOKEN`).
 
-**Response (200 OK):**
-```json
-{
-  "overall_status": "modified",
-  "sha256_changed": true,
-  "size_changed": false,
-  "size_delta_bytes": 0,
-  "size_delta_human": "0 B",
-  "chunks_matching": 15,
-  "chunks_changed": 1,
-  "chunks_added": 0,
-  "chunks_removed": 0,
-  "change_percentage": 6.25,
-  "assessment": {
-    "classification": "CONTENT_MODIFICATION",
-    "summary": "Targeted content modification: 1 chunk(s) modified while 15 chunk(s) remained intact.",
-    "evidence_points": [
-      "Cryptographic SHA-256 digest changed.",
-      "File size remained exactly unchanged.",
-      "Chunk comparison: 15 unchanged, 1 modified, 0 added, 0 removed."
-    ]
-  }
-}
-```
+#### `POST /api/v1/files/track`
+Registers a new file baseline or appends a new version for an existing asset.
+
+#### `GET /api/v1/files/{file_id}/timeline`
+Retrieves chronological version history for an owned asset. Returns `404 Not Found` if not owned.
 
 ---
 
-### 2.4 Tamper-Evident Hash Chain
+### 2.5 Tamper-Evident Hash Chain
 
 #### `GET /api/v1/chain/status` & `POST /api/v1/chain/verify`
-Performs an active cryptographic audit across all ledger records.
+Performs an active cryptographic audit across user ledger blocks ($H_n = \text{SHA256}(\text{Record}_n + H_{n-1})$).
 
-**Response (200 OK - Valid):**
-```json
-{
-  "status": "CHAIN_VALID",
-  "valid": true,
-  "total_records": 12,
-  "verified_records": 12,
-  "head_hash": "ec145fe29ea...",
-  "message": "Tamper-Evident Hash Chain verified intact across all 12 audit records."
-}
-```
-
-**Response (200 OK - Tampered):**
-```json
-{
-  "status": "CHAIN_BROKEN",
-  "valid": false,
-  "failure_type": "PAYLOAD_TAMPERED",
-  "broken_record_id": "37df517...",
-  "sequence_num": 3,
-  "reason": "Content tampering detected in record 37df517... Stored digest differs from recalculated canonical hash.",
-  "total_records": 12,
-  "verified_records": 2
-}
-```
+#### `GET /api/v1/chain/records`
+Retrieves paginated ledger blocks for the authenticated user.
 
 ---
 
-### 2.5 Evidence Reports
+### 2.6 Evidence Reporting
 
 #### `POST /api/v1/evidence/generate`
-Generates a certified Evidence Report, appends the event to the audit chain, and calculates the **Evidence Report Hash**.
+Generates a structured forensic Evidence Report signed with a canonical **Evidence Report Hash** (SHA-256 digest).
 
 #### `GET /api/v1/evidence/{report_id}`
-Returns report JSON.
+Retrieves JSON envelope for an owned report.
 
 #### `GET /api/v1/evidence/{report_id}/html`
-Returns a standalone, printable HTML forensic evidence certificate.
+Renders standalone printable forensic HTML document.
+
+---
+
+## 3. Safe cURL Code Examples
+
+### Login & Token Acquisition
+```bash
+curl -X POST \
+  "<HASHLENS_API>/api/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d '{"login":"analyst@example.com","password":"YOUR_PASSWORD"}'
+```
+
+### Text Hashing
+```bash
+curl -X POST \
+  "<HASHLENS_API>/api/v1/hash/text" \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Verification text payload","algorithms":["sha256","sha512"]}'
+```
+
+### Track Asset Version
+```bash
+curl -X POST \
+  "<HASHLENS_API>/api/v1/files/track" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"filename":"auth.log","hashes":{"sha256":"82e631289..."},"size_bytes":2048,"chunk_count":1}'
+```
+
+### Audit Hash Chain Integrity
+```bash
+curl -X POST \
+  "<HASHLENS_API>/api/v1/chain/verify" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```

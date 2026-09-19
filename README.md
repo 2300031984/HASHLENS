@@ -228,17 +228,27 @@ pip-audit -r backend/requirements.txt
 5. **HSTS Configuration:** HSTS is disabled by default (`ENABLE_HSTS=false`) to preserve plain HTTP local development. It must be explicitly enabled (`ENABLE_HSTS=true`) only behind HTTPS TLS-terminating reverse proxies.
 6. **File Type Detection Scope:** Magic-byte classification is advisory based on header signatures; it does not replace full deep packet inspection or anti-malware sandboxing.
 
+## User Guide & Documentation
+
+Comprehensive operator documentation is available:
+- **Operator Handbook:** [`docs/user-guide.md`](file:///d:/CyberTools/HashLens/docs/user-guide.md)
+- **API Reference:** [`docs/api.md`](file:///d:/CyberTools/HashLens/docs/api.md)
+- **Security Engineering Guide:** [`docs/security.md`](file:///d:/CyberTools/HashLens/docs/security.md)
+- **Deployment Architecture:** [`docs/deployment.md`](file:///d:/CyberTools/HashLens/docs/deployment.md)
+- **System Architecture:** [`docs/architecture.md`](file:///d:/CyberTools/HashLens/docs/architecture.md)
+
 ---
 
-## Future Roadmap
+## Roadmap & Completed Milestones
 
-- [ ] **PostgreSQL Persistence Engine:** Production database driver integration for enterprise data scale.
+- [x] **PostgreSQL Persistence Engine:** Dual SQLite (local dev) and PostgreSQL (production) database support.
+- [x] **Multi-User Authentication & Per-User Isolation:** Argon2id password hashing, JWT authentication, and BOLA/IDOR protection.
+- [x] **Tamper-Evident Hash Chain:** Per-user cryptographic linked-list ledger with active audit verification.
+- [x] **Canonical Evidence Reports:** Self-verifying SHA-256 digest envelopes and printable HTML certificates.
 - [ ] **Redis-Backed Distributed Rate Limiting:** Shared rate-limiting store for multi-instance load-balanced deployments.
 - [ ] **Asymmetric Digital Signatures:** X.509 / Ed25519 signing for certified evidence packages.
-- [ ] **Multi-User Authentication & RBAC:** OAuth2 / OIDC authentication with role-based access control.
 - [ ] **Object Storage Integration:** AWS S3 and MinIO blob backends for large-scale file versioning.
 - [ ] **Asynchronous Background Workers:** Celery / Redis queue integration for multi-gigabyte forensic file processing.
-- [ ] **Forensic Timeline Visualization:** Interactive visual node graphs for complex version evolution trees.
 
 ---
 
