@@ -1,0 +1,61 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: hashlens-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_ENV=production
+      - API_HOST=0.0.0.0
+      - API_PORT=8000
+      - DATABASE_URL=sqlite:////app/data/hashlens.db
+      - MAX_UPLOAD_SIZE=104857600
+      - RATE_LIMIT_REQUESTS=120
+      - RATE_LIMIT_WINDOW_SECONDS=60
+    volumes:
+      - hashlens-data:/app/data
+    networks:
+      - hashlens-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: dashboard/Dockerfile
+    container_name: hashlens-dashboard
+    restart: unless-stopped
+    ports:
+      - "8501:8501"
+    environment:
+      - API_HOST=backend
+      - API_PORT=8000
+      - DATABASE_URL=sqlite:////app/data/hashlens.db
+    volumes:
+      - hashlens-data:/app/data
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - hashlens-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  hashlens-data:
+    name: hashlens_shared_data
+
+networks:
+  hashlens-network:
+    driver: bridge
