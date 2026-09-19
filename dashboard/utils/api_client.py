@@ -20,7 +20,11 @@ class HashLensClient:
     """Client for HashLens backend services."""
 
     def __init__(self, base_url: Optional[str] = None):
-        self.base_url = base_url or f"http://127.0.0.1:{settings.API_PORT}{settings.API_V1_PREFIX}"
+        import os
+        host = os.getenv("API_HOST", "127.0.0.1")
+        if host == "0.0.0.0":
+            host = "127.0.0.1"
+        self.base_url = base_url or f"http://{host}:{settings.API_PORT}{settings.API_V1_PREFIX}"
 
     def get_health(self) -> Dict[str, Any]:
         """Fetch platform health."""
