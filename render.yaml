@@ -32,7 +32,7 @@ services:
         fromService:
           type: web
           name: hashlens-dashboard
-          property: url
+          envVarKey: RENDER_EXTERNAL_URL
     healthCheckPath: /api/v1/health
 
   - type: web
@@ -47,5 +47,5 @@ services:
         fromService:
           type: web
           name: hashlens-backend
-          property: url
+          envVarKey: RENDER_EXTERNAL_URL
     healthCheckPath: /_stcore/health
