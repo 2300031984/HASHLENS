@@ -1,7 +1,7 @@
 """
 HashLens Dashboard
 Security Operations Center (SOC) style web interface for file integrity,
-chunk forensics, version timelines, tamper-evident chaining, and certified reporting.
+chunk forensics, version timelines, tamper-evident chaining, and evidence reporting.
 """
 
 import streamlit as st

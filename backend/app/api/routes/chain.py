@@ -8,6 +8,7 @@ from typing import Any, Dict, List
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
+from backend.app.core.config import settings
 from backend.app.db.database import get_db
 from backend.app.models.models import ChainRecordModel
 from backend.app.schemas.schemas import ChainAuditResponse, ChainRecordSchema
@@ -45,7 +46,14 @@ def simulate_tamper_endpoint(
     """
     DEMONSTRATION ONLY: Deliberately alters the payload of a specific record
     to verify that the audit engine detects cryptographic corruption.
+    Disabled in production mode.
     """
+    if settings.APP_ENV == "production":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Tamper simulation endpoint is disabled in production mode.",
+        )
+
     record = (
         db.query(ChainRecordModel)
         .filter(ChainRecordModel.record_id == record_id)

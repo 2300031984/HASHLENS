@@ -1,7 +1,7 @@
 """
 HashLens Evidence Report Routes
-Generates certified forensic reports, returns Evidence Report Hashes,
-and renders printable forensic HTML certificates.
+Generates forensic Evidence Reports, returns Evidence Report Hashes,
+and renders printable Evidence Report HTML documents.
 """
 
 from typing import Any, Dict, Optional
@@ -22,7 +22,7 @@ def generate_evidence_endpoint(
     db: Session = Depends(get_db),
 ):
     """
-    Generates a certified forensic evidence report with an embedded SHA-256
+    Generates a forensic Evidence Report with an embedded SHA-256
     'Evidence Report Hash' and registers the event into the tamper-evident chain.
     """
     try:
@@ -46,7 +46,7 @@ def get_evidence_report_endpoint(
     report_id: str,
     db: Session = Depends(get_db),
 ):
-    """Retrieves an existing evidence report by ID."""
+    """Retrieves an existing Evidence Report by ID."""
     report = EvidenceService.get_report_by_id(db, report_id)
     if not report:
         raise HTTPException(
@@ -57,11 +57,11 @@ def get_evidence_report_endpoint(
 
 
 @router.get("/evidence/{report_id}/html", response_class=HTMLResponse)
-def get_evidence_html_certificate(
+def get_evidence_html_report(
     report_id: str,
     db: Session = Depends(get_db),
 ):
-    """Renders a standalone, printable cybersecurity forensic evidence certificate."""
+    """Renders a standalone, printable cybersecurity forensic Evidence Report HTML document."""
     report = EvidenceService.get_report_by_id(db, report_id)
     if not report:
         raise HTTPException(

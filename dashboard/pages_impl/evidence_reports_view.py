@@ -1,7 +1,7 @@
 """
 HashLens Dashboard - Evidence Reports Page
-Generates certified forensic integrity reports, displays Evidence Report Hashes,
-and exports canonical JSON or styled printable HTML certificates.
+Generates forensic Evidence Reports, displays Evidence Report Hashes,
+and exports canonical JSON or styled printable HTML reports.
 """
 
 import streamlit as st
@@ -11,8 +11,8 @@ from backend.app.services.evidence_service import EvidenceService
 
 
 def render():
-    st.markdown('<div class="soc-header">CERTIFIED FORENSIC EVIDENCE REPORTS</div>', unsafe_allow_html=True)
-    st.markdown("Generate self-authenticating evidence certificates containing cryptographic digests and tamper-audit proofs.")
+    st.markdown('<div class="soc-header">FORENSIC EVIDENCE REPORTS</div>', unsafe_allow_html=True)
+    st.markdown("Generate self-authenticating Evidence Reports containing cryptographic digests and tamper-audit proofs.")
 
     uploaded = st.file_uploader("Select asset for Evidence Report generation", key="ev_uploader")
     analyst_notes = st.text_input("Analyst Notes / Incident Reference", value="Standard forensic baseline verification.")
@@ -61,7 +61,7 @@ def render():
 
             # Downloads
             st.markdown("---")
-            st.subheader("Export Evidence Certificate")
+            st.subheader("Export Evidence Report")
 
             col_json, col_html = st.columns(2)
 
@@ -74,14 +74,14 @@ def render():
                     mime="application/json",
                 )
 
-            html_cert = EvidenceService.render_html_report(report)
+            html_report = EvidenceService.render_html_report(report)
             with col_html:
                 st.download_button(
-                    label="📄 Download Printable HTML Certificate",
-                    data=html_cert,
+                    label="📄 Download Printable HTML Report",
+                    data=html_report,
                     file_name=f"{report['report_id']}.html",
                     mime="text/html",
                 )
 
-            with st.expander("Preview HTML Certificate"):
-                st.components.v1.html(html_cert, height=600, scrolling=True)
+            with st.expander("Preview HTML Report"):
+                st.components.v1.html(html_report, height=600, scrolling=True)

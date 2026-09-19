@@ -136,7 +136,7 @@ def run_demo():
         print(f"          Head Hash    : {audit['head_hash']}")
 
         # Step 11: Generate evidence report
-        print("\n[STEP 11] Generating certified Forensic Evidence Report...")
+        print("\n[STEP 11] Generating Forensic Evidence Report...")
         report = EvidenceService.generate_report(
             db=db,
             fingerprint=fp_v2,

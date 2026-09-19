@@ -32,7 +32,7 @@ app = FastAPI(
     description=(
         "Production-grade cybersecurity REST API providing streaming cryptographic hashing "
         "(MD5, SHA-1, SHA-256, SHA-512), chunk-level forensic comparison, 'Why Did My Hash Change?' "
-        "root-cause diagnostics, version tracking, tamper-evident audit chaining, and certified evidence reporting."
+        "root-cause diagnostics, version tracking, tamper-evident audit chaining, and evidence reporting."
     ),
     version=settings.APP_VERSION,
     docs_url="/docs",

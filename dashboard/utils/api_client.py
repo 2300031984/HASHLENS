@@ -1,13 +1,13 @@
 """
 HashLens Dashboard API Client
-Provides seamless communication with HashLens FastAPI REST backend
-with resilient local fallback if needed.
+Provides communication with HashLens FastAPI REST backend.
+Local fallback to in-process services is restricted strictly to development mode.
 """
 
 import requests
 from typing import Any, Dict, List, Optional
 from backend.app.core.config import settings
-from backend.app.db.database import SessionLocal, init_db
+from backend.app.db.database import SessionLocal
 from backend.app.services.chain_service import HashChainService
 from backend.app.services.comparison_service import ComparisonEngine
 from backend.app.services.evidence_service import EvidenceService
@@ -35,6 +35,11 @@ class HashLensClient:
                 host = "127.0.0.1"
             self.base_url = base_url or f"http://{host}:{settings.API_PORT}{settings.API_V1_PREFIX}"
 
+    @property
+    def is_production(self) -> bool:
+        """Return True if running under production environment settings."""
+        return settings.APP_ENV.lower() == "production"
+
     def get_health(self) -> Dict[str, Any]:
         """Fetch platform health."""
         try:
@@ -44,7 +49,16 @@ class HashLensClient:
         except Exception:
             pass
 
-        # Local fallback
+        if self.is_production:
+            return {
+                "status": "unhealthy (backend unreachable)",
+                "app": settings.APP_NAME,
+                "version": settings.APP_VERSION,
+                "environment": settings.APP_ENV,
+                "error": "Remote API endpoint is unreachable in production mode.",
+            }
+
+        # Local development fallback
         db = SessionLocal()
         try:
             audit = HashChainService.verify_chain(db)
@@ -107,6 +121,9 @@ class HashLensClient:
         except Exception:
             pass
 
+        if self.is_production:
+            return {"error": "File hashing API call failed in production mode."}
+
         import io
         return FingerprintService.generate_fingerprint_from_stream(
             stream=io.BytesIO(file_bytes),
@@ -168,6 +185,9 @@ class HashLensClient:
         except Exception:
             pass
 
+        if self.is_production:
+            return {"error": "File tracking API call failed in production mode."}
+
         db = SessionLocal()
         try:
             return HistoryService.register_or_update_file(db, fingerprint)
@@ -182,6 +202,9 @@ class HashLensClient:
                 return resp.json()
         except Exception:
             pass
+
+        if self.is_production:
+            return []
 
         db = SessionLocal()
         try:
@@ -198,6 +221,9 @@ class HashLensClient:
         except Exception:
             pass
 
+        if self.is_production:
+            return {"error": f"Timeline API call failed for file '{file_id}' in production mode."}
+
         db = SessionLocal()
         try:
             return HistoryService.get_file_timeline(db, file_id)
@@ -212,6 +238,13 @@ class HashLensClient:
                 return resp.json()
         except Exception:
             pass
+
+        if self.is_production:
+            return {
+                "status": "CHAIN_UNREACHABLE",
+                "valid": False,
+                "error": "Chain audit API call failed in production mode.",
+            }
 
         db = SessionLocal()
         try:
@@ -228,6 +261,9 @@ class HashLensClient:
         except Exception:
             pass
 
+        if self.is_production:
+            return []
+
         db = SessionLocal()
         try:
             return HashChainService.get_records(db, limit=limit)
@@ -235,11 +271,16 @@ class HashLensClient:
             db.close()
 
     def simulate_tamper(self, record_id: str) -> Dict[str, Any]:
-        """Simulate tampering with a chain block for testing."""
+        """Simulate tampering with a chain block for testing. Disabled in production."""
+        if self.is_production:
+            return {"error": "Tamper simulation is disabled in production mode."}
+
         try:
             resp = requests.post(f"{self.base_url}/chain/simulate-tamper?record_id={record_id}", timeout=5)
             if resp.status_code == 200:
                 return resp.json()
+            if resp.status_code == 403:
+                return {"error": "Tamper simulation is disabled in production mode."}
         except Exception:
             pass
 
@@ -262,7 +303,7 @@ class HashLensClient:
         version_num: int = 1,
         notes: str = "",
     ) -> Dict[str, Any]:
-        """Generate certified Evidence Report with Evidence Report Hash."""
+        """Generate Evidence Report with Evidence Report Hash."""
         try:
             resp = requests.post(
                 f"{self.base_url}/evidence/generate",
@@ -278,6 +319,9 @@ class HashLensClient:
                 return resp.json()
         except Exception:
             pass
+
+        if self.is_production:
+            return {"error": "Evidence generation API call failed in production mode."}
 
         db = SessionLocal()
         try:
