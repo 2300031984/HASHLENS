@@ -103,10 +103,14 @@ class HashChainService:
             payload_json=json.dumps(payload),
         )
 
-        db.add(record)
-        db.commit()
-        db.refresh(record)
-        return record
+        try:
+            db.add(record)
+            db.commit()
+            db.refresh(record)
+            return record
+        except Exception:
+            db.rollback()
+            raise
 
     @classmethod
     def verify_chain(cls, db: Session, user_id: Optional[str] = None) -> Dict[str, Any]:

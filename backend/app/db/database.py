@@ -9,17 +9,27 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from backend.app.core.config import settings
 
-# SQLite needs connect_args check_same_thread=False
-connect_args = {}
-if settings.DATABASE_URL.startswith("sqlite"):
-    connect_args["check_same_thread"] = False
+def get_normalized_database_url(url: str) -> str:
+    """Normalizes database connection URLs (e.g. postgres:// -> postgresql+psycopg://)."""
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://") and not url.startswith("postgresql+"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return url
 
-engine = create_engine(
-    settings.DATABASE_URL,
-    connect_args=connect_args,
-    echo=False,
-    future=True,
-)
+
+normalized_db_url = get_normalized_database_url(settings.DATABASE_URL)
+
+engine_kwargs = {"echo": False, "future": True}
+if normalized_db_url.startswith("sqlite"):
+    engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    engine_kwargs["pool_pre_ping"] = True
+    engine_kwargs["pool_size"] = 5
+    engine_kwargs["max_overflow"] = 10
+    engine_kwargs["pool_recycle"] = 1800
+
+engine = create_engine(normalized_db_url, **engine_kwargs)
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -36,22 +46,27 @@ def get_db() -> Generator[Session, None, None]:
     db = SessionLocal()
     try:
         yield db
+    except Exception:
+        db.rollback()
+        raise
     finally:
         db.close()
 
 
 def init_db() -> None:
     """Creates database tables if they do not exist and applies lightweight SQLite column migrations."""
+    db_url = get_normalized_database_url(settings.DATABASE_URL)
+
     # Ensure directory exists for sqlite file
-    if settings.DATABASE_URL.startswith("sqlite:///"):
-        sqlite_path = settings.DATABASE_URL.replace("sqlite:///", "")
+    if db_url.startswith("sqlite:///"):
+        sqlite_path = db_url.replace("sqlite:///", "")
         from pathlib import Path
         Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
 
     Base.metadata.create_all(bind=engine)
 
     # Lightweight SQLite schema auto-migration for user_id columns on existing databases
-    if settings.DATABASE_URL.startswith("sqlite"):
+    if db_url.startswith("sqlite"):
         from sqlalchemy import inspect, text
         inspector = inspect(engine)
         tables = inspector.get_table_names()
@@ -61,5 +76,6 @@ def init_db() -> None:
                     columns = [c["name"] for c in inspector.get_columns(table)]
                     if "user_id" not in columns:
                         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+
 
 

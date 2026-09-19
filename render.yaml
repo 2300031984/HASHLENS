@@ -27,7 +27,9 @@ services:
       - key: ENABLE_HSTS
         value: "false"
       - key: DATABASE_URL
-        value: sqlite:////app/data/hashlens.db
+        fromDatabase:
+          name: hashlens-db
+          property: connectionString
       - key: ALLOWED_ORIGINS
         fromService:
           type: web
@@ -49,3 +51,10 @@ services:
           name: hashlens-backend
           envVarKey: RENDER_EXTERNAL_URL
     healthCheckPath: /_stcore/health
+
+databases:
+  - name: hashlens-db
+    plan: free
+    region: oregon
+    databaseName: hashlens
+    user: hashlens

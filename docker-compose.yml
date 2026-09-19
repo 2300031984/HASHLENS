@@ -11,7 +11,7 @@ services:
       - APP_ENV=production
       - API_HOST=0.0.0.0
       - API_PORT=8000
-      - DATABASE_URL=sqlite:////app/data/hashlens.db
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/hashlens.db}
       - MAX_UPLOAD_SIZE=104857600
       - RATE_LIMIT_REQUESTS=120
       - RATE_LIMIT_WINDOW_SECONDS=60
@@ -37,7 +37,7 @@ services:
     environment:
       - API_HOST=backend
       - API_PORT=8000
-      - DATABASE_URL=sqlite:////app/data/hashlens.db
+      - DATABASE_URL=${DATABASE_URL:-sqlite:////app/data/hashlens.db}
     volumes:
       - hashlens-data:/app/data
     depends_on:
@@ -52,9 +52,32 @@ services:
       retries: 3
       start_period: 10s
 
+  postgres:
+    image: postgres:16-alpine
+    container_name: hashlens-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=hashlens
+      - POSTGRES_USER=hashlens
+      - POSTGRES_PASSWORD=hashlens_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - hashlens-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hashlens -d hashlens"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
 volumes:
   hashlens-data:
     name: hashlens_shared_data
+  postgres-data:
+    name: hashlens_postgres_data
 
 networks:
   hashlens-network:

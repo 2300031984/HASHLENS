@@ -24,8 +24,8 @@ def get_health(db: Session = Depends(get_db)):
     try:
         db.execute(text("SELECT 1"))
         db_status = "healthy"
-    except Exception as e:
-        db_status = f"unhealthy: {str(e)}"
+    except Exception:
+        db_status = "unhealthy"
 
     # Check Chain
     try:

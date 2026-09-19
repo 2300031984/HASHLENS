@@ -73,6 +73,9 @@ HashLens includes explicit warnings in both its REST API metadata and SOC Dashbo
    * Unauthorized cross-user requests return a consistent `404 Not Found` response to prevent leaking resource existence or metadata to unauthorized callers.
 4. **Per-User Tamper-Evident Hash Chain Isolation:**
    * Hash chain linking ($H_n = \text{SHA256}(\text{Record}_n + H_{n-1})$), sequencing, and audit verification (`/chain/verify`) run independently per `user_id`.
-5. **Legacy Data Behavior:**
-   * Legacy or unowned records created prior to authentication feature `user_id = NULL` and remain isolated from newly registered user accounts to prevent accidental cross-tenant data exposure.
+7. **Production Database Security & Transaction Safety:**
+   * **SQL Injection Prevention:** All database operations utilize SQLAlchemy ORM parameterized statements. Raw SQL string concatenation is strictly prohibited.
+   * **Connection Pool Hardening:** PostgreSQL connection pools employ pre-ping verification (`pool_pre_ping=True`) to validate connection health and prevent stale socket drops.
+   * **Health Check Diagnostics Error Masking:** The `/api/v1/health` endpoint returns a generic `"unhealthy"` status on database connectivity failures, strictly masking raw SQL error messages, database credentials, or internal connection strings.
+   * **Safe Migration Management:** Alembic versioned migrations run non-destructive, explicit schema updates, eliminating blind `DROP TABLE` commands or accidental data destruction in production.
 

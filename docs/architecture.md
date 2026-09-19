@@ -29,7 +29,17 @@ graph TD
     Services --> Core Engines
     Core Engines --> SafeTemp[Ephemeral Streaming Buffer]
     CoreEngines --> DB[(SQLAlchemy Persistence: SQLite / PostgreSQL)]
+    DB --> Alembic[Alembic Database Migration Framework]
 ```
+
+---
+
+## 1.1 Persistence & Dual Database Architecture
+
+HASHLENS supports dual persistence engine options configured seamlessly via `DATABASE_URL`:
+- **SQLite Development Mode** (`sqlite:///./data/hashlens.db`): Zero-dependency local persistence for fast unit testing, local execution, and standalone demonstrations.
+- **PostgreSQL Production Mode** (`postgresql+psycopg://USER:PASSWORD@HOST:5432/DATABASE`): Production-grade database persistence utilizing the modern `psycopg3` driver with pre-ping connection pooling (`pool_pre_ping=True`, `pool_size=5`, `max_overflow=10`).
+- **Alembic Database Migrations**: Versioned database migration framework (`alembic/`) providing controlled schema initialization, foreign key integrity, and zero-downtime updates without destructive table drops.
 
 ---
 
