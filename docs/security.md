@@ -57,3 +57,22 @@ HashLens includes explicit warnings in both its REST API metadata and SOC Dashbo
    * `Referrer-Policy: strict-origin-when-cross-origin`
 2. **Rate Limiting:** In-memory sliding-window limiter restricts abuse to 120 requests per minute per IP, responding with `429 Too Many Requests` and standard `Retry-After` headers.
 3. **Structured Logging Without Leakage:** Server logs record correlation request IDs, execution durations, and status codes, but strictly omit raw file contents, secrets, or unhandled tracebacks.
+
+---
+
+## 6. Authentication, Per-User Data Isolation & IDOR / BOLA Defenses
+
+1. **Authentication Architecture:**
+   * **Password Hashing:** Passwords are hashed exclusively using **Argon2id** (`argon2-cffi`). Raw cryptographic hashes (MD5, SHA-1, SHA-256) are never used for password security.
+   * **JWT Access Tokens:** Issued upon login with short lifespan (default 60 minutes) containing minimal required claims (`sub`, `iat`, `exp`). Secret keys are enforced via `Settings` validation in production.
+2. **Application-Level Per-User Resource Isolation:**
+   * Every user-owned persistent resource (`TrackedFile`, `FileVersion`, `ChainRecord`, `EvidenceReport`) is tied to an authoritative `user_id` foreign key referencing `users.id`.
+   * Listing endpoints (`/files`, `/chain/records`, `/evidence`) automatically scope results using `WHERE user_id = current_user.id`.
+3. **Insecure Direct Object Reference (IDOR / BOLA) Defenses:**
+   * Every single-resource query (`/files/{file_id}/timeline`, `/evidence/{report_id}`) verifies that `resource.user_id == current_user.id`.
+   * Unauthorized cross-user requests return a consistent `404 Not Found` response to prevent leaking resource existence or metadata to unauthorized callers.
+4. **Per-User Tamper-Evident Hash Chain Isolation:**
+   * Hash chain linking ($H_n = \text{SHA256}(\text{Record}_n + H_{n-1})$), sequencing, and audit verification (`/chain/verify`) run independently per `user_id`.
+5. **Legacy Data Behavior:**
+   * Legacy or unowned records created prior to authentication feature `user_id = NULL` and remain isolated from newly registered user accounts to prevent accidental cross-tenant data exposure.
+

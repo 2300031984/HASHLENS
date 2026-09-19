@@ -9,7 +9,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 
+from backend.app.api.deps import get_optional_current_user
 from backend.app.db.database import get_db
+from backend.app.models.models import UserModel
 from backend.app.schemas.schemas import EvidenceGenerateRequest
 from backend.app.services.evidence_service import EvidenceService
 
@@ -19,12 +21,14 @@ router = APIRouter(tags=["Evidence Reporting"])
 @router.post("/evidence/generate")
 def generate_evidence_endpoint(
     payload: EvidenceGenerateRequest,
+    current_user: Optional[UserModel] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
     """
     Generates a forensic Evidence Report with an embedded SHA-256
-    'Evidence Report Hash' and registers the event into the tamper-evident chain.
+    'Evidence Report Hash' for the current user and registers the event into the tamper-evident chain.
     """
+    user_id = current_user.id if current_user else None
     try:
         report = EvidenceService.generate_report(
             db=db,
@@ -32,6 +36,7 @@ def generate_evidence_endpoint(
             comparison_result=payload.comparison_result,
             version_num=payload.version_num or 1,
             analyst_notes=payload.analyst_notes,
+            user_id=user_id,
         )
         return report
     except Exception as e:
@@ -44,10 +49,12 @@ def generate_evidence_endpoint(
 @router.get("/evidence/{report_id}")
 def get_evidence_report_endpoint(
     report_id: str,
+    current_user: Optional[UserModel] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
-    """Retrieves an existing Evidence Report by ID."""
-    report = EvidenceService.get_report_by_id(db, report_id)
+    """Retrieves an existing Evidence Report owned by the current user."""
+    user_id = current_user.id if current_user else None
+    report = EvidenceService.get_report_by_id(db, report_id, user_id=user_id)
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -59,10 +66,12 @@ def get_evidence_report_endpoint(
 @router.get("/evidence/{report_id}/html", response_class=HTMLResponse)
 def get_evidence_html_report(
     report_id: str,
+    current_user: Optional[UserModel] = Depends(get_optional_current_user),
     db: Session = Depends(get_db),
 ):
-    """Renders a standalone, printable cybersecurity forensic Evidence Report HTML document."""
-    report = EvidenceService.get_report_by_id(db, report_id)
+    """Renders a standalone, printable cybersecurity forensic Evidence Report HTML document for an owned report."""
+    user_id = current_user.id if current_user else None
+    report = EvidenceService.get_report_by_id(db, report_id, user_id=user_id)
     if not report:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -70,3 +79,4 @@ def get_evidence_html_report(
         )
     html_content = EvidenceService.render_html_report(report)
     return HTMLResponse(content=html_content)
+

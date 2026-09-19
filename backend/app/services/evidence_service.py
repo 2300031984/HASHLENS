@@ -50,6 +50,7 @@ class EvidenceService:
         comparison_result: Optional[Dict[str, Any]] = None,
         version_num: Optional[int] = 1,
         analyst_notes: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Creates a structured evidence report, signs it with a canonical SHA-256
@@ -60,8 +61,8 @@ class EvidenceService:
         rand_suffix = uuid.uuid4().hex[:6].upper()
         report_id = f"HL-EV-{date_str}-{rand_suffix}"
 
-        # Current status of the tamper-evident chain
-        chain_audit = HashChainService.verify_chain(db)
+        # Current status of the tamper-evident chain for this user
+        chain_audit = HashChainService.verify_chain(db, user_id=user_id)
 
         # Build raw report structure
         raw_report = {
@@ -103,6 +104,7 @@ class EvidenceService:
         report_record = EvidenceReportModel(
             id=uuid.uuid4().hex,
             report_id=report_id,
+            user_id=user_id,
             generated_at=now.isoformat(),
             file_id=fingerprint.get("file_id"),
             report_hash=evidence_report_hash,
@@ -121,18 +123,19 @@ class EvidenceService:
                 "report_id": report_id,
                 "evidence_report_hash": evidence_report_hash,
             },
+            user_id=user_id,
         )
 
         return final_report
 
     @classmethod
-    def get_report_by_id(cls, db: Session, report_id: str) -> Optional[Dict[str, Any]]:
-        """Retrieves and verifies a previously generated report."""
-        record = (
-            db.query(EvidenceReportModel)
-            .filter(EvidenceReportModel.report_id == report_id)
-            .first()
-        )
+    def get_report_by_id(cls, db: Session, report_id: str, user_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """Retrieves and verifies a previously generated report owned by the specified user."""
+        query = db.query(EvidenceReportModel).filter(EvidenceReportModel.report_id == report_id)
+        if user_id is not None:
+            query = query.filter(EvidenceReportModel.user_id == user_id)
+
+        record = query.first()
         if not record:
             return None
         return json.loads(record.report_json)

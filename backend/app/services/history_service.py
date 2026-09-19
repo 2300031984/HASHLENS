@@ -24,20 +24,21 @@ class HistoryService:
         db: Session,
         fingerprint: Dict[str, Any],
         custom_filename: Optional[str] = None,
+        user_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         Registers a new file baseline (Version 1) or updates an existing tracked file with a new version.
         Compares with previous version if present, updates integrity status,
-        and logs the event into the Tamper-Evident Hash Chain.
+        and logs the event into the Tamper-Evident Hash Chain for the specified user.
         """
         target_filename = custom_filename or fingerprint["filename"]
 
-        # Check if file with same filename is already tracked
-        tracked_file = (
-            db.query(TrackedFileModel)
-            .filter(TrackedFileModel.filename == target_filename)
-            .first()
-        )
+        # Check if file with same filename is already tracked by this user
+        query = db.query(TrackedFileModel).filter(TrackedFileModel.filename == target_filename)
+        if user_id is not None:
+            query = query.filter(TrackedFileModel.user_id == user_id)
+
+        tracked_file = query.first()
 
         now_iso = datetime.now(timezone.utc).isoformat()
 
@@ -46,6 +47,7 @@ class HistoryService:
             file_id = uuid.uuid4().hex
             tracked_file = TrackedFileModel(
                 id=file_id,
+                user_id=user_id,
                 filename=target_filename,
                 file_type=fingerprint.get("mime_type", "application/octet-stream"),
                 created_at=now_iso,
@@ -58,6 +60,7 @@ class HistoryService:
             v1 = FileVersionModel(
                 id=v1_id,
                 file_id=file_id,
+                user_id=user_id,
                 version_num=1,
                 timestamp=fingerprint.get("timestamp", now_iso),
                 size_bytes=fingerprint["size_bytes"],
@@ -88,6 +91,7 @@ class HistoryService:
                     "size_bytes": fingerprint["size_bytes"],
                     "status": "ORIGINAL",
                 },
+                user_id=user_id,
             )
 
             return {
@@ -141,6 +145,7 @@ class HistoryService:
             new_v = FileVersionModel(
                 id=v_id,
                 file_id=tracked_file.id,
+                user_id=user_id,
                 version_num=new_version_num,
                 timestamp=fingerprint.get("timestamp", now_iso),
                 size_bytes=fingerprint["size_bytes"],
@@ -174,6 +179,7 @@ class HistoryService:
                     "size_bytes": fingerprint["size_bytes"],
                     "status": integrity_status,
                 },
+                user_id=user_id,
             )
 
             return {
@@ -188,9 +194,13 @@ class HistoryService:
             }
 
     @classmethod
-    def get_file_timeline(cls, db: Session, file_id: str) -> Dict[str, Any]:
-        """Retrieves full version progression timeline for a tracked file."""
-        tracked_file = db.query(TrackedFileModel).filter(TrackedFileModel.id == file_id).first()
+    def get_file_timeline(cls, db: Session, file_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Retrieves full version progression timeline for a tracked file owned by the specified user."""
+        query = db.query(TrackedFileModel).filter(TrackedFileModel.id == file_id)
+        if user_id is not None:
+            query = query.filter(TrackedFileModel.user_id == user_id)
+
+        tracked_file = query.first()
         if not tracked_file:
             raise ValueError(f"Tracked file not found: {file_id}")
 
@@ -227,9 +237,13 @@ class HistoryService:
         }
 
     @classmethod
-    def list_tracked_files(cls, db: Session) -> List[Dict[str, Any]]:
-        """Lists all tracked files with their latest version metadata."""
-        files = db.query(TrackedFileModel).order_by(TrackedFileModel.updated_at.desc()).all()
+    def list_tracked_files(cls, db: Session, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Lists tracked files for the specified user with latest version metadata."""
+        query = db.query(TrackedFileModel)
+        if user_id is not None:
+            query = query.filter(TrackedFileModel.user_id == user_id)
+
+        files = query.order_by(TrackedFileModel.updated_at.desc()).all()
         results = []
         for f in files:
             latest = (

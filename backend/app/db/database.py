@@ -41,7 +41,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 def init_db() -> None:
-    """Creates database tables if they do not exist."""
+    """Creates database tables if they do not exist and applies lightweight SQLite column migrations."""
     # Ensure directory exists for sqlite file
     if settings.DATABASE_URL.startswith("sqlite:///"):
         sqlite_path = settings.DATABASE_URL.replace("sqlite:///", "")
@@ -49,3 +49,17 @@ def init_db() -> None:
         Path(sqlite_path).parent.mkdir(parents=True, exist_ok=True)
 
     Base.metadata.create_all(bind=engine)
+
+    # Lightweight SQLite schema auto-migration for user_id columns on existing databases
+    if settings.DATABASE_URL.startswith("sqlite"):
+        from sqlalchemy import inspect, text
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        with engine.begin() as conn:
+            for table in ["tracked_files", "file_versions", "integrity_chain", "evidence_reports"]:
+                if table in tables:
+                    columns = [c["name"] for c in inspector.get_columns(table)]
+                    if "user_id" not in columns:
+                        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+
+

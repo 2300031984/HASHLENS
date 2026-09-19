@@ -3,6 +3,7 @@ HashLens API Dependencies
 Provides reusable authentication and authorization dependencies for FastAPI endpoints.
 """
 
+from typing import Optional
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -69,3 +70,18 @@ def get_current_user(
         )
 
     return user
+
+
+def get_optional_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(security_scheme),
+    db: Session = Depends(get_db),
+) -> Optional[UserModel]:
+    """
+    FastAPI dependency returning current authenticated user if Bearer token present,
+    or None if unauthenticated.
+    Raises 401 if token is invalid or expired.
+    """
+    if not credentials or credentials.scheme.lower() != "bearer":
+        return None
+    return get_current_user(credentials=credentials, db=db)
+

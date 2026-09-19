@@ -25,11 +25,13 @@ class TrackedFileModel(Base):
     __tablename__ = "tracked_files"
 
     id = Column(String(64), primary_key=True, index=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     filename = Column(String(255), nullable=False, index=True)
     file_type = Column(String(100), nullable=False)
     created_at = Column(String(50), nullable=False)
     updated_at = Column(String(50), nullable=False)
 
+    user = relationship("UserModel")
     versions = relationship(
         "FileVersionModel",
         back_populates="tracked_file",
@@ -43,6 +45,7 @@ class FileVersionModel(Base):
 
     id = Column(String(64), primary_key=True, index=True)
     file_id = Column(String(64), ForeignKey("tracked_files.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     version_num = Column(Integer, nullable=False)
     timestamp = Column(String(50), nullable=False)
     size_bytes = Column(Integer, nullable=False)
@@ -59,6 +62,7 @@ class FileVersionModel(Base):
     change_summary = Column(Text, nullable=True)
 
     tracked_file = relationship("TrackedFileModel", back_populates="versions")
+    user = relationship("UserModel")
 
 
 class ChainRecordModel(Base):
@@ -66,7 +70,8 @@ class ChainRecordModel(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True, index=True)
     record_id = Column(String(64), unique=True, nullable=False, index=True)
-    sequence_num = Column(Integer, unique=True, nullable=False, index=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
+    sequence_num = Column(Integer, nullable=False, index=True)
     timestamp = Column(String(50), nullable=False)
     event_type = Column(String(50), nullable=False, index=True)
     file_id = Column(String(64), nullable=True, index=True)
@@ -75,13 +80,19 @@ class ChainRecordModel(Base):
     current_record_hash = Column(String(64), nullable=False)
     payload_json = Column(Text, nullable=False)
 
+    user = relationship("UserModel")
+
 
 class EvidenceReportModel(Base):
     __tablename__ = "evidence_reports"
 
     id = Column(String(64), primary_key=True, index=True)
     report_id = Column(String(64), unique=True, nullable=False, index=True)
+    user_id = Column(String(64), ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
     generated_at = Column(String(50), nullable=False)
     file_id = Column(String(64), nullable=True, index=True)
     report_hash = Column(String(64), nullable=False, index=True)
     report_json = Column(Text, nullable=False)
+
+    user = relationship("UserModel")
+

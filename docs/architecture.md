@@ -38,14 +38,15 @@ graph TD
 | Component | Directory / File | Core Responsibility |
 | :--- | :--- | :--- |
 | **API Layer** | `backend/app/api/` | Exposes versioned `/api/v1` REST endpoints with strict Pydantic validation, error masking, and OpenAPI generation. |
+| **Auth & Security** | `backend/app/core/auth_security.py` | Enforces Argon2id password hashing, JWT access token generation/decoding, and application-level per-user data isolation. |
 | **Security Layer** | `backend/app/core/security.py` | Enforces sliding-window rate limiting, security headers (CSP, HSTS, X-Frame-Options), and correlation IDs. |
 | **Hashing Engine** | `backend/app/services/hashing_engine.py` | Multi-algorithm streaming engine with constant-time verification and avalanche effect metrics. |
 | **Safe File Service** | `backend/app/services/file_service.py` | Neutralizes directory traversal attacks, strips null bytes, and provides advisory magic byte sniffing. |
 | **Fingerprint Service** | `backend/app/services/fingerprint_service.py` | Slices files into sequential chunks, computing individual chunk SHA-256 digests and metadata fingerprints. |
 | **Comparison Engine** | `backend/app/services/comparison_service.py` | Computes chunk-by-chunk diff maps and evaluates the deterministic "Why Did My Hash Change?" rules engine. |
-| **Tamper-Evident Chain** | `backend/app/services/chain_service.py` | Cryptographically links audit events ($H_n = \text{SHA256}(\text{Record}_n + H_{n-1})$) and provides $O(N)$ audit verification. |
-| **Evidence Service** | `backend/app/services/evidence_service.py` | Compiles canonical evidence reports and seals them with an immutable **Evidence Report Hash**. |
-| **SOC Dashboard** | `dashboard/` | Security Operations Center inspired interactive web dashboard for analysts. |
+| **Tamper-Evident Chain** | `backend/app/services/chain_service.py` | Cryptographically links audit events ($H_n = \text{SHA256}(\text{Record}_n + H_{n-1})$) per user and provides $O(N)$ audit verification. |
+| **Evidence Service** | `backend/app/services/evidence_service.py` | Compiles canonical evidence reports and seals them with an immutable **Evidence Report Hash** owned by the generating user. |
+| **SOC Dashboard** | `dashboard/` | Security Operations Center inspired interactive web dashboard for analysts with authenticated per-user session isolation. |
 | **CLI Tool** | `backend/app/cli.py` | Standalone terminal utility calling core services directly for shell integration. |
 
 ---

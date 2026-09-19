@@ -249,6 +249,7 @@ class HashLensClient:
             resp = requests.post(
                 f"{self.base_url}/files/track",
                 json=fingerprint,
+                headers=self._get_headers(),
                 timeout=10,
             )
             if resp.status_code == 200:
@@ -268,7 +269,7 @@ class HashLensClient:
     def get_tracked_files(self) -> List[Dict[str, Any]]:
         """List all tracked files."""
         try:
-            resp = requests.get(f"{self.base_url}/files", timeout=5)
+            resp = requests.get(f"{self.base_url}/files", headers=self._get_headers(), timeout=5)
             if resp.status_code == 200:
                 return resp.json()
         except Exception:
@@ -286,7 +287,7 @@ class HashLensClient:
     def get_timeline(self, file_id: str) -> Dict[str, Any]:
         """Get chronological version timeline for a file."""
         try:
-            resp = requests.get(f"{self.base_url}/files/{file_id}/timeline", timeout=5)
+            resp = requests.get(f"{self.base_url}/files/{file_id}/timeline", headers=self._get_headers(), timeout=5)
             if resp.status_code == 200:
                 return resp.json()
         except Exception:
@@ -304,7 +305,7 @@ class HashLensClient:
     def verify_chain(self) -> Dict[str, Any]:
         """Perform audit of the tamper-evident chain."""
         try:
-            resp = requests.post(f"{self.base_url}/chain/verify", timeout=10)
+            resp = requests.post(f"{self.base_url}/chain/verify", headers=self._get_headers(), timeout=10)
             if resp.status_code == 200:
                 return resp.json()
         except Exception:
@@ -326,7 +327,7 @@ class HashLensClient:
     def get_chain_records(self, limit: int = 50) -> List[Dict[str, Any]]:
         """Get recent chain records."""
         try:
-            resp = requests.get(f"{self.base_url}/chain/records?limit={limit}", timeout=5)
+            resp = requests.get(f"{self.base_url}/chain/records?limit={limit}", headers=self._get_headers(), timeout=5)
             if resp.status_code == 200:
                 return resp.json()
         except Exception:
@@ -347,7 +348,7 @@ class HashLensClient:
             return {"error": "Tamper simulation is disabled in production mode."}
 
         try:
-            resp = requests.post(f"{self.base_url}/chain/simulate-tamper?record_id={record_id}", timeout=5)
+            resp = requests.post(f"{self.base_url}/chain/simulate-tamper?record_id={record_id}", headers=self._get_headers(), timeout=5)
             if resp.status_code == 200:
                 return resp.json()
             if resp.status_code == 403:
@@ -384,6 +385,7 @@ class HashLensClient:
                     "version_num": version_num,
                     "analyst_notes": notes,
                 },
+                headers=self._get_headers(),
                 timeout=10,
             )
             if resp.status_code == 200:

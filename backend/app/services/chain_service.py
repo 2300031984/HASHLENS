@@ -56,16 +56,17 @@ class HashChainService:
         file_hash: str,
         file_id: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        user_id: Optional[str] = None,
     ) -> ChainRecordModel:
         """
         Appends an event to the tamper-evident hash chain.
-        Ensures cryptographic continuity from the head of the chain.
+        Ensures cryptographic continuity from the head of the chain for the specified user.
         """
-        last_record = (
-            db.query(ChainRecordModel)
-            .order_by(ChainRecordModel.sequence_num.desc())
-            .first()
-        )
+        query = db.query(ChainRecordModel)
+        if user_id is not None:
+            query = query.filter(ChainRecordModel.user_id == user_id)
+
+        last_record = query.order_by(ChainRecordModel.sequence_num.desc()).first()
 
         if last_record is None:
             sequence_num = 1
@@ -91,6 +92,7 @@ class HashChainService:
 
         record = ChainRecordModel(
             record_id=record_id,
+            user_id=user_id,
             sequence_num=sequence_num,
             timestamp=timestamp,
             event_type=event_type,
@@ -107,9 +109,9 @@ class HashChainService:
         return record
 
     @classmethod
-    def verify_chain(cls, db: Session) -> Dict[str, Any]:
+    def verify_chain(cls, db: Session, user_id: Optional[str] = None) -> Dict[str, Any]:
         """
-        Audits every record in the tamper-evident chain.
+        Audits every record in the tamper-evident chain for a specific user (or global chain).
         Detects any:
           - Modified payload
           - Tampered or broken current_record_hash
@@ -117,11 +119,11 @@ class HashChainService:
           - Sequence deletion or insertion
         Returns CHAIN_VALID or CHAIN_BROKEN with pinpoint diagnosis.
         """
-        records: List[ChainRecordModel] = (
-            db.query(ChainRecordModel)
-            .order_by(ChainRecordModel.sequence_num.asc())
-            .all()
-        )
+        query = db.query(ChainRecordModel)
+        if user_id is not None:
+            query = query.filter(ChainRecordModel.user_id == user_id)
+
+        records: List[ChainRecordModel] = query.order_by(ChainRecordModel.sequence_num.asc()).all()
 
         if not records:
             return {
@@ -219,11 +221,14 @@ class HashChainService:
         }
 
     @classmethod
-    def get_records(cls, db: Session, limit: int = 50) -> List[Dict[str, Any]]:
+    def get_records(cls, db: Session, limit: int = 50, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Retrieves recent chain records for dashboard and API display."""
+        query = db.query(ChainRecordModel)
+        if user_id is not None:
+            query = query.filter(ChainRecordModel.user_id == user_id)
+
         records = (
-            db.query(ChainRecordModel)
-            .order_by(ChainRecordModel.sequence_num.desc())
+            query.order_by(ChainRecordModel.sequence_num.desc())
             .limit(limit)
             .all()
         )
