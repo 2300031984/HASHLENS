@@ -35,23 +35,37 @@ class SafeFileService:
     def sanitize_filename(raw_name: str) -> str:
         """
         Strips dangerous path traversals (../, ..\\), null bytes, and control characters.
-        Returns a clean base filename.
+        Returns a clean, safe base filename without directory traversal markers.
         """
         if not raw_name:
             return "unnamed_file"
 
-        # Remove null bytes
+        # 1. Remove null bytes and control characters \x00-\x1f
         cleaned = raw_name.replace("\x00", "")
 
-        # Extract only the base name (prevents ../ and absolute paths)
-        cleaned = os.path.basename(cleaned)
-        cleaned = Path(cleaned).name
+        # 2. Normalize backslashes to forward slashes for cross-platform path handling
+        normalized = cleaned.replace("\\", "/")
 
-        # Strip illegal characters across Windows and Unix
-        cleaned = re.sub(r'[\/\\:\*\?"<>\|\x00-\x1f]', "_", cleaned)
-        cleaned = cleaned.strip(". ")
+        # 3. Split path into components and filter out empty components, '.', and '..'
+        parts = [p.strip() for p in normalized.split("/") if p.strip() and p.strip() not in (".", "..")]
 
-        return cleaned if cleaned else "unnamed_file"
+        if not parts:
+            return "unnamed_file"
+
+        # Take the final path component (the filename)
+        candidate = parts[-1]
+
+        # 4. Strip illegal characters across Windows and Unix
+        candidate = re.sub(r'[\/\\:\*\?"<>\|\x00-\x1f]', "_", candidate)
+
+        # 5. Guarantee no residual '..' sequences survive within the filename
+        while ".." in candidate:
+            candidate = candidate.replace("..", "_")
+
+        # 6. Strip leading/trailing dots and spaces
+        candidate = candidate.strip(". ")
+
+        return candidate if candidate else "unnamed_file"
 
     @staticmethod
     def detect_file_type(header_bytes: bytes, filename: str) -> Dict[str, str]:
