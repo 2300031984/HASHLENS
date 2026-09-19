@@ -1,9 +1,9 @@
 # HASHLENS — Deployment & Production Architecture Guide
 
-This document covers running HASHLENS in local development mode, containerizing it with Docker Compose for local self-hosting, and preparing the architecture for public Internet deployment behind an HTTPS reverse proxy.
+This document covers running HASHLENS in local development mode, containerizing it with Docker Compose for local self-hosting, deploying via generic HTTPS reverse proxies, and deploying to cloud PaaS platforms like Render.
 
 > [!NOTE]
-> **Hosted Instance Notice:** This repository provides source code and Docker containerization for self-hosted execution. It does **not** provide or maintain a publicly hosted cloud instance.
+> **Hosted Instance Notice:** This repository provides source code, Docker containerization, and Render Blueprint configurations for self-hosted execution. It does **not** provide or maintain a publicly hosted cloud instance.
 
 ---
 
@@ -96,9 +96,9 @@ docker compose down
 
 ---
 
-## 3. Public Deployment Architecture
+## 3. Public Reverse Proxy Deployment Architecture
 
-When deploying HASHLENS to a public server or cloud instance, the application must be deployed behind an HTTPS reverse proxy (such as Nginx, Caddy, or Traefik) that terminates TLS and proxies traffic to the internal containers.
+When deploying HASHLENS to a self-hosted VPS or cloud VM, the application should be deployed behind an HTTPS reverse proxy (such as Nginx, Caddy, or Traefik) that terminates TLS and proxies traffic to internal containers.
 
 ### 3.1 Data Flow & Traffic Routing
 
@@ -117,56 +117,51 @@ HTTPS Reverse Proxy (Port 80 / 443)  ← TLS Certificate Termination
           Persistent Storage Volume (/app/data)
 ```
 
-### 3.2 Production Nginx Reverse Proxy Configuration Example
+---
 
-Below is a reference Nginx configuration demonstrating HTTPS TLS termination, WebSocket upgrading for Streamlit, body size alignment, and API reverse proxying:
+## 4. Render Blueprint Deployment
 
-```nginx
-# Redirect HTTP to HTTPS
-server {
-    listen 80;
-    server_name <YOUR_DOMAIN>;
-    return 301 https://$host$request_uri;
-}
+HASHLENS includes a pre-configured `render.yaml` Render Blueprint specification for automated cloud deployment as two separate Docker Web Services on Render.
 
-# Main HTTPS Server Block
-server {
-    listen 443 ssl http2;
-    server_name <YOUR_DOMAIN>;
+### 4.1 Architecture on Render
 
-    ssl_certificate /etc/letsencrypt/live/<YOUR_DOMAIN>/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/<YOUR_DOMAIN>/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # Align Reverse Proxy Upload Ceiling with Backend MAX_UPLOAD_SIZE (100 MB)
-    client_max_body_size 100M;
-
-    # Route Dashboard & WebSockets to Streamlit Container
-    location / {
-        proxy_pass http://127.0.0.1:8501;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    # Route REST API Requests to FastAPI Container
-    location /api/ {
-        proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+```text
+GitHub Repository (2300031984/HASHLENS)
+        │
+        ▼
+   Render Engine (render.yaml Blueprint)
+        │
+        ├──► Web Service 1: hashlens-backend (FastAPI / Docker)
+        │    - Port: 8000 (0.0.0.0)
+        │    - Healthcheck: /api/v1/health
+        │    - Public URL: https://hashlens-backend.onrender.com
+        │
+        └──► Web Service 2: hashlens-dashboard (Streamlit / Docker)
+             - Port: 8501 (0.0.0.0)
+             - Healthcheck: /_stcore/health
+             - API_URL: https://hashlens-backend.onrender.com
+             - Public URL: https://hashlens-dashboard.onrender.com
 ```
 
-### 3.3 Production Environment Hardening
-1. **Enable HSTS:** Set `ENABLE_HSTS=true` in `.env` **after** confirming HTTPS reverse proxy routing operates cleanly.
-2. **Configure CORS:** Set `ALLOWED_ORIGINS=https://<YOUR_DOMAIN>` to restrict cross-origin browser requests.
-3. **Upload Limits:** Ensure Nginx `client_max_body_size` matches FastAPI `MAX_UPLOAD_SIZE` (100 MB).
-4. **Deployment Verification:** Complete all verification steps documented in [`docs/public-deployment-checklist.md`](file:///d:/CyberTools/HashLens/docs/public-deployment-checklist.md).
+### 4.2 Step-by-Step Render Deployment Workflow
+
+1. **Push Repository to GitHub:** Ensure your latest commits are pushed to your GitHub repository ([`https://github.com/2300031984/HASHLENS`](https://github.com/2300031984/HASHLENS)).
+2. **Create a Render Account:** Sign in at [dashboard.render.com](https://dashboard.render.com).
+3. **Deploy Blueprint:**
+   - Click **New +** → **Blueprint**.
+   - Connect your GitHub repository `2300031984/HASHLENS`.
+   - Render automatically detects `render.yaml` and defines both `hashlens-backend` and `hashlens-dashboard` services.
+4. **Configure Environment Variables:**
+   - For `hashlens-backend`:
+     - `APP_ENV`: `production`
+     - `ALLOWED_ORIGINS`: `https://hashlens-dashboard.onrender.com` (replace with your actual Render dashboard URL)
+     - `ENABLE_HSTS`: `false` (set to `true` after verifying HTTPS routing)
+   - For `hashlens-dashboard`:
+     - `API_URL`: Set to the backend's public Render URL (`https://hashlens-backend.onrender.com`).
+5. **Configure Persistent Disk (Optional):**
+   - On Render Free Tier, filesystems are ephemeral (SQLite data resets on container restart/redeploy).
+   - To persist SQLite data and evidence reports across redeploys, attach a **Render Persistent Disk** at `/app/data` (size: 1 GB) on the backend service.
+6. **Verify Deployment:**
+   - Open `https://hashlens-backend.onrender.com/api/v1/health` to confirm HTTP 200 health response.
+   - Open `https://hashlens-dashboard.onrender.com` to access the Streamlit forensic interface.
+   - Test text hashing, file diffing, integrity chain auditing, and report generation.

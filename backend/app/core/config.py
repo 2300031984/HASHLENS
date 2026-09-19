@@ -4,8 +4,8 @@ Centralized Pydantic-based settings with environment variable overrides.
 """
 
 from pathlib import Path
-from typing import List, Union
-from pydantic import Field, field_validator
+from typing import List, Optional, Union
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,8 +25,9 @@ class Settings(BaseSettings):
 
     # Server binding
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 8000
+    API_PORT: int = Field(default=8000, validation_alias=AliasChoices("PORT", "API_PORT"))
     API_V1_PREFIX: str = "/api/v1"
+    API_URL: Optional[str] = None
 
     # Security & I/O limits
     MAX_UPLOAD_SIZE: int = 100 * 1024 * 1024  # 100 MB default max upload

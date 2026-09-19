@@ -21,10 +21,19 @@ class HashLensClient:
 
     def __init__(self, base_url: Optional[str] = None):
         import os
-        host = os.getenv("API_HOST", "127.0.0.1")
-        if host == "0.0.0.0":
-            host = "127.0.0.1"
-        self.base_url = base_url or f"http://{host}:{settings.API_PORT}{settings.API_V1_PREFIX}"
+        api_url_env = os.getenv("API_URL") or os.getenv("BACKEND_URL") or settings.API_URL
+        if api_url_env:
+            url = api_url_env.rstrip("/")
+            if not url.startswith("http://") and not url.startswith("https://"):
+                url = f"https://{url}"
+            if not url.endswith(settings.API_V1_PREFIX):
+                url = f"{url}{settings.API_V1_PREFIX}"
+            self.base_url = base_url or url
+        else:
+            host = os.getenv("API_HOST", "127.0.0.1")
+            if host == "0.0.0.0":
+                host = "127.0.0.1"
+            self.base_url = base_url or f"http://{host}:{settings.API_PORT}{settings.API_V1_PREFIX}"
 
     def get_health(self) -> Dict[str, Any]:
         """Fetch platform health."""
