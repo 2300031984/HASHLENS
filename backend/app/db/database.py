@@ -65,7 +65,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
 
-    # Lightweight SQLite schema auto-migration for user_id columns on existing databases
+    # Lightweight SQLite schema auto-migration for user_id columns and index fixes on existing databases
     if db_url.startswith("sqlite"):
         from sqlalchemy import inspect, text
         inspector = inspect(engine)
@@ -76,6 +76,14 @@ def init_db() -> None:
                     columns = [c["name"] for c in inspector.get_columns(table)]
                     if "user_id" not in columns:
                         conn.execute(text(f"ALTER TABLE {table} ADD COLUMN user_id INTEGER REFERENCES users(id)"))
+            
+            # Ensure sequence_num index on integrity_chain is non-unique for per-user sequencing
+            if "integrity_chain" in tables:
+                try:
+                    conn.execute(text("DROP INDEX IF EXISTS ix_integrity_chain_sequence_num"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_integrity_chain_sequence_num ON integrity_chain (sequence_num)"))
+                except Exception:
+                    pass
 
 
 

@@ -56,8 +56,6 @@ def track_file_version_endpoint(
     user_id = current_user.id if current_user else None
     try:
         return HistoryService.register_or_update_file(db, fingerprint, user_id=user_id)
-    except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except Exception:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to register file version due to malformed fingerprint payload.")
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"Failed to register file version: {str(e)}")
 

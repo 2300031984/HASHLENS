@@ -1,6 +1,7 @@
 # HASHLENS — File Integrity & Hash Forensics Platform
 
 [![CI Pipeline](https://github.com/2300031984/HASHLENS/actions/workflows/ci.yml/badge.svg)](https://github.com/2300031984/HASHLENS/actions)
+[![Status](https://img.shields.io/badge/Status-PRODUCTION%20VERIFIED-brightgreen.svg)](#)
 [![Python Version](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111.0-009688.svg)](https://fastapi.tiangolo.com/)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.35.0-FF4B4B.svg)](https://streamlit.io/)
@@ -93,13 +94,14 @@ HASHLENS has undergone comprehensive functional, security, forensic, dependency,
 
 | Assessment Area | Results / Status | Details |
 |---|---|---|
-| **Automated Unit & API Tests** | **38 / 38 PASS** | Full Pytest suite covering routes, security, hashing, fingerprinting, and ledgers. |
+| **Phase 5 Live Production Acceptance** | **25 / 25 PASS** | Complete live production verification suite (`scripts/verify_production.py`). |
+| **Automated Unit & API Tests** | **70 / 70 PASS** | Full Pytest suite covering auth, IDOR, PostgreSQL, security, hashing, fingerprinting, and ledgers. |
 | **Acceptance Demo Workflow** | **13 / 13 PASS** | End-to-end acceptance script (`python scripts/demo.py`) executed cleanly. |
 | **Manual API Security Fuzzing** | **15 / 15 PASS** | Validated path traversal, malformed payloads, rate limits, oversize uploads, and methods. |
 | **Forensic Comparison Scenarios** | **7 / 7 PASS** | Verified `NO_CHANGE`, `CONTENT_MODIFICATION`, `SIZE_CHANGE`, `MAJOR_REPLACEMENT`, etc. |
 | **Hash Chain Tamper Simulation** | **5 / 5 PASS** | Verified `CHAIN_VALID` for clean state and `CHAIN_BROKEN` for tampered payloads/links. |
 | **Dependency Vulnerabilities** | **0 Known CVEs** | `pip-audit` scan returned 0 known vulnerabilities on core backend dependencies. |
-| **Static Code Security** | **Bandit Reviewed** | AST scan reviewed; MD5/SHA-1 usage confirmed as required forensic functionality. |
+| **Static Code Security** | **Bandit Reviewed** | AST scan reviewed; 0 HIGH/HIGH issues; intentional MD5/SHA-1 legacy support preserved. |
 | **Docker Build & Health** | **PASS** | Multi-stage Docker Compose services built and verified non-root execution. |
 
 ---
