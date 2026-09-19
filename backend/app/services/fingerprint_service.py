@@ -34,9 +34,9 @@ class FingerprintService:
 
         clean_filename = SafeFileService.sanitize_filename(raw_filename)
 
-        # Whole-file hashers
-        md5_hasher = hashlib.md5()
-        sha1_hasher = hashlib.sha1()
+        # Whole-file hashers (legacy hashes marked non-security for forensic checksums)
+        md5_hasher = hashlib.md5(usedforsecurity=False)
+        sha1_hasher = hashlib.sha1(usedforsecurity=False)
         sha256_hasher = hashlib.sha256()
         sha512_hasher = hashlib.sha512()
 

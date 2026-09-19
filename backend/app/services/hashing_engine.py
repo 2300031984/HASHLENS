@@ -143,9 +143,9 @@ class HashingEngine:
         hashers: Dict[str, Any] = {}
         for alg in algorithms:
             if alg == HashAlgorithm.MD5.value:
-                hashers[alg] = hashlib.md5()
+                hashers[alg] = hashlib.md5(usedforsecurity=False)
             elif alg == HashAlgorithm.SHA1.value:
-                hashers[alg] = hashlib.sha1()
+                hashers[alg] = hashlib.sha1(usedforsecurity=False)
             elif alg == HashAlgorithm.SHA256.value:
                 hashers[alg] = hashlib.sha256()
             elif alg == HashAlgorithm.SHA512.value:
