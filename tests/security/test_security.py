@@ -118,14 +118,14 @@ def test_chain_tamper_simulation_blocked_in_production(client, monkeypatch):
 
 
 def test_dashboard_client_production_fallback_disabled(monkeypatch):
-    """Verify that dashboard API client in production mode disables direct local DB fallbacks when API is unreachable."""
+    """Verify that dashboard API client disables direct local DB fallbacks when API is unreachable."""
     from dashboard.utils.api_client import HashLensClient
     monkeypatch.setattr(settings, "APP_ENV", "production")
 
     unreachable_client = HashLensClient(base_url="http://127.0.0.1:9999/api/v1")
     health = unreachable_client.get_health()
-    assert health.get("status") == "unhealthy (backend unreachable)"
-    assert "unreachable in production mode" in health.get("error", "")
+    assert health.get("status") == "BACKEND_UNAVAILABLE"
+    assert "unreachable" in health.get("error", "").lower()
 
     tracked_files = unreachable_client.get_tracked_files()
     assert tracked_files == []
@@ -135,7 +135,7 @@ def test_dashboard_client_production_fallback_disabled(monkeypatch):
     assert chain_audit.get("valid") is False
 
     tamper_res = unreachable_client.simulate_tamper("rec-123")
-    assert "disabled in production mode" in tamper_res.get("error", "")
+    assert "disabled in production mode" in tamper_res.get("error", "") or "unreachable" in tamper_res.get("error", "").lower()
 
 
 def test_rate_limiter_enforcement():

@@ -7,7 +7,6 @@ and exports canonical JSON or styled printable HTML reports.
 import streamlit as st
 import json
 from dashboard.utils.api_client import api_client
-from backend.app.services.evidence_service import EvidenceService
 
 
 def render():
@@ -74,7 +73,7 @@ def render():
                     mime="application/json",
                 )
 
-            html_report = EvidenceService.render_html_report(report)
+            html_report = api_client.render_html_report(report)
             with col_html:
                 st.download_button(
                     label="📄 Download Printable HTML Report",

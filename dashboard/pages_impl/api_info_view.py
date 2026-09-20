@@ -4,7 +4,7 @@ API catalog, interactive curl examples, OpenAPI links, and Burp/ZAP security tes
 """
 
 import streamlit as st
-from backend.app.core.config import settings
+from dashboard.utils.api_client import api_client
 
 
 def render():
@@ -15,10 +15,10 @@ def render():
         HashLens exposes a secure, high-throughput REST API suitable for SIEM, SOAR,
         CI/CD security pipelines, and automated forensic ingest.
         <br><br>
-        * **API Base URL:** <code>http://{settings.API_HOST}:{settings.API_PORT}{settings.API_V1_PREFIX}</code>
-        * **Interactive Swagger UI:** <a href="http://localhost:8000/docs" target="_blank" style="color: #00f0ff;">http://localhost:8000/docs</a>
-        * **ReDoc Reference:** <a href="http://localhost:8000/redoc" target="_blank" style="color: #00f0ff;">http://localhost:8000/redoc</a>
-        * **OpenAPI JSON Schema:** <a href="http://localhost:8000/api/v1/openapi.json" target="_blank" style="color: #00f0ff;">/api/v1/openapi.json</a>
+        * **API Base URL:** <code>{api_client.base_url}</code>
+        * **Interactive Swagger UI:** <a href="{api_client.base_url.replace('/api/v1', '')}/docs" target="_blank" style="color: #00f0ff;">Swagger Docs</a>
+        * **ReDoc Reference:** <a href="{api_client.base_url.replace('/api/v1', '')}/redoc" target="_blank" style="color: #00f0ff;">ReDoc Docs</a>
+        * **OpenAPI JSON Schema:** <a href="{api_client.base_url}/openapi.json" target="_blank" style="color: #00f0ff;">/api/v1/openapi.json</a>
         """,
         unsafe_allow_html=True,
     )

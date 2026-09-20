@@ -45,6 +45,11 @@ services:
     plan: free
     region: oregon
     envVars:
+      - key: API_BASE_URL
+        fromService:
+          type: web
+          name: hashlens-backend
+          envVarKey: RENDER_EXTERNAL_URL
       - key: API_URL
         fromService:
           type: web
