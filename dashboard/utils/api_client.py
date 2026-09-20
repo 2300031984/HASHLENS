@@ -8,21 +8,19 @@ No direct database sessions, models, or backend database services are instantiat
 import os
 import requests
 from typing import Any, Dict, List, Optional
-from backend.app.core.config import settings
 
 
 class HashLensClient:
     """Client for HashLens backend REST API."""
 
     def __init__(self, base_url: Optional[str] = None):
-        api_v1_prefix = getattr(settings, "API_V1_PREFIX", "/api/v1") if "settings" in globals() else "/api/v1"
-        api_port = getattr(settings, "API_PORT", 8000) if "settings" in globals() else 8000
+        api_v1_prefix = os.getenv("API_V1_PREFIX", "/api/v1")
+        api_port = int(os.getenv("API_PORT", "8000"))
 
         api_url_env = (
             os.getenv("API_BASE_URL")
             or os.getenv("API_URL")
             or os.getenv("BACKEND_URL")
-            or getattr(settings, "API_URL", None)
         )
         if api_url_env:
             url = api_url_env.rstrip("/")
@@ -110,8 +108,8 @@ class HashLensClient:
 
     @property
     def is_production(self) -> bool:
-        """Return True if running under production environment settings."""
-        env = os.getenv("APP_ENV", getattr(settings, "APP_ENV", "development"))
+        """Return True if running under production environment profile."""
+        env = os.getenv("APP_ENV", "development")
         return env.lower() == "production"
 
     def get_health(self) -> Dict[str, Any]:
@@ -125,9 +123,9 @@ class HashLensClient:
 
         return {
             "status": "BACKEND_UNAVAILABLE",
-            "app": getattr(settings, "APP_NAME", "HashLens"),
-            "version": getattr(settings, "APP_VERSION", "1.0.0"),
-            "environment": getattr(settings, "APP_ENV", "production" if self.is_production else "development"),
+            "app": os.getenv("APP_NAME", "HashLens"),
+            "version": os.getenv("APP_VERSION", "1.0.0"),
+            "environment": os.getenv("APP_ENV", "production" if self.is_production else "development"),
             "uptime_seconds": 0.0,
             "database": "UNAVAILABLE",
             "chain_health": "CHAIN_UNREACHABLE",
