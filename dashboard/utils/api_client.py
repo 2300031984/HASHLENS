@@ -49,18 +49,47 @@ class HashLensClient:
             resp = requests.post(
                 f"{self.base_url}/auth/register",
                 json={"email": email, "username": username, "password": password},
-                timeout=5,
+                timeout=15,
             )
             if resp.status_code == 201:
-                return resp.json()
+                try:
+                    return resp.json()
+                except Exception:
+                    return {"error": "Registration succeeded but server response format was invalid."}
+
             if resp.status_code in (400, 422):
-                detail = resp.json().get("detail", "Registration failed.")
-                if isinstance(detail, list):
-                    detail = detail[0].get("msg", "Validation error")
-                return {"error": detail}
-        except Exception as e:
-            return {"error": f"Registration request failed: {str(e)}"}
-        return {"error": "Registration failed."}
+                try:
+                    detail = resp.json().get("detail", "Please check the submitted information.")
+                    if isinstance(detail, list):
+                        detail = detail[0].get("msg", "Please check the submitted information.")
+                    return {"error": str(detail)}
+                except Exception:
+                    return {"error": "Please check the submitted information."}
+
+            if resp.status_code == 409:
+                return {"error": "An account with this username or email already exists."}
+
+            if resp.status_code == 429:
+                return {"error": "Too many attempts. Please try again later."}
+
+            if resp.status_code == 500:
+                return {"error": "Authentication service temporarily unavailable."}
+
+            if resp.status_code in (502, 503, 504):
+                return {"error": "Backend service is temporarily unavailable."}
+
+            try:
+                detail = resp.json().get("detail")
+                if detail and isinstance(detail, str):
+                    return {"error": detail}
+            except Exception:
+                pass
+            return {"error": f"Registration failed (HTTP {resp.status_code})."}
+
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            return {"error": "Unable to reach the authentication service."}
+        except Exception:
+            return {"error": "Registration failed due to a network or client error."}
 
     def login(self, login: str, password: str) -> Dict[str, Any]:
         """Authenticate user login and retrieve JWT access token."""
@@ -68,39 +97,78 @@ class HashLensClient:
             resp = requests.post(
                 f"{self.base_url}/auth/login",
                 json={"login": login, "password": password},
-                timeout=5,
+                timeout=15,
             )
             if resp.status_code == 200:
-                data = resp.json()
-                self.auth_token = data.get("access_token")
-                return data
-            if resp.status_code in (400, 401, 422):
-                detail = resp.json().get("detail", "Invalid credentials.")
-                if isinstance(detail, list):
-                    detail = detail[0].get("msg", "Validation error")
-                return {"error": detail}
-        except Exception as e:
-            return {"error": f"Login request failed: {str(e)}"}
-        return {"error": "Authentication failed."}
+                try:
+                    data = resp.json()
+                    self.auth_token = data.get("access_token")
+                    return data
+                except Exception:
+                    return {"error": "Login succeeded but token format was invalid."}
+
+            if resp.status_code == 401:
+                try:
+                    detail = resp.json().get("detail", "Invalid username or password.")
+                    return {"error": str(detail)}
+                except Exception:
+                    return {"error": "Invalid username or password."}
+
+            if resp.status_code in (400, 422):
+                try:
+                    detail = resp.json().get("detail", "Please check the submitted information.")
+                    if isinstance(detail, list):
+                        detail = detail[0].get("msg", "Please check the submitted information.")
+                    return {"error": str(detail)}
+                except Exception:
+                    return {"error": "Please check the submitted information."}
+
+            if resp.status_code == 409:
+                return {"error": "An account with this username or email already exists."}
+
+            if resp.status_code == 429:
+                return {"error": "Too many attempts. Please try again later."}
+
+            if resp.status_code == 500:
+                return {"error": "Authentication service temporarily unavailable."}
+
+            if resp.status_code in (502, 503, 504):
+                return {"error": "Backend service is temporarily unavailable."}
+
+            try:
+                detail = resp.json().get("detail")
+                if detail and isinstance(detail, str):
+                    return {"error": detail}
+            except Exception:
+                pass
+            return {"error": f"Authentication failed (HTTP {resp.status_code})."}
+
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            return {"error": "Unable to reach the authentication service."}
+        except Exception:
+            return {"error": "Authentication failed due to a network or client error."}
 
     def get_current_user(self, token: Optional[str] = None) -> Dict[str, Any]:
         """Fetch current user profile using JWT token."""
         headers = self._get_headers(token)
         try:
-            resp = requests.get(f"{self.base_url}/auth/me", headers=headers, timeout=5)
+            resp = requests.get(f"{self.base_url}/auth/me", headers=headers, timeout=15)
             if resp.status_code == 200:
                 return resp.json()
             if resp.status_code == 401:
-                return {"error": resp.json().get("detail", "Unauthorized")}
-        except Exception as e:
-            return {"error": f"Get current user request failed: {str(e)}"}
+                try:
+                    return {"error": resp.json().get("detail", "Unauthorized")}
+                except Exception:
+                    return {"error": "Unauthorized"}
+        except Exception:
+            return {"error": "Unable to reach profile service."}
         return {"error": "Failed to fetch user profile."}
 
     def logout(self, token: Optional[str] = None) -> Dict[str, Any]:
         """Logout user session."""
         headers = self._get_headers(token)
         try:
-            requests.post(f"{self.base_url}/auth/logout", headers=headers, timeout=3)
+            requests.post(f"{self.base_url}/auth/logout", headers=headers, timeout=5)
         except Exception:
             pass
         self.auth_token = None
@@ -115,7 +183,7 @@ class HashLensClient:
     def get_health(self) -> Dict[str, Any]:
         """Fetch platform health strictly via REST API HTTP endpoint GET /api/v1/health."""
         try:
-            resp = requests.get(f"{self.base_url}/health", timeout=3)
+            resp = requests.get(f"{self.base_url}/health", timeout=15)
             if resp.status_code == 200:
                 return resp.json()
         except Exception:

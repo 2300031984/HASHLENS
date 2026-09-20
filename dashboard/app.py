@@ -129,8 +129,9 @@ def render_auth_screen():
                                 api_client.auth_token = login_res["access_token"]
                                 st.rerun()
                             else:
+                                err = login_res.get("error", "Automatic login failed after registration.")
+                                st.error(f"Account created, but authentication failed: {err}. Please log in manually.")
                                 st.session_state["auth_mode"] = "login"
-                                st.rerun()
 
             st.markdown("Already have an account?")
             if st.button("Login", key="btn_goto_login"):

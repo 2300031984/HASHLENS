@@ -6,7 +6,7 @@ REST API endpoints for user registration, Argon2id login authentication, profile
 import uuid
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from backend.app.api.deps import get_current_user
@@ -29,7 +29,7 @@ def register_user(payload: UserRegisterRequest, db: Session = Depends(get_db)):
 
     # Check duplicate email or username
     existing_user = db.query(UserModel).filter(
-        or_(UserModel.email == email_clean, UserModel.username == username_clean)
+        or_(UserModel.email == email_clean, func.lower(UserModel.username) == username_clean.lower())
     ).first()
 
     if existing_user:
@@ -69,7 +69,10 @@ def login_user(payload: UserLoginRequest, db: Session = Depends(get_db)):
     login_id = payload.login.strip().lower()
     
     user = db.query(UserModel).filter(
-        or_(UserModel.email == login_id, UserModel.username == payload.login.strip())
+        or_(
+            UserModel.email == login_id,
+            func.lower(UserModel.username) == login_id,
+        )
     ).first()
 
     if not user or not verify_password(payload.password, user.password_hash):

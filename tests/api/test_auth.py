@@ -77,13 +77,21 @@ def test_user_login_success(client):
     assert token_data["token_type"] == "bearer"
     assert token_data["user"]["email"] == "auth_test@hashlens.sec"
 
-    # Login with username
+    # Login with username (exact case)
     res_user = client.post("/api/v1/auth/login", json={
         "login": "auth_user",
         "password": "MySecretPassword123",
     })
     assert res_user.status_code == 200
     assert "access_token" in res_user.json()
+
+    # Login with username (case-insensitive / uppercase input)
+    res_user_upper = client.post("/api/v1/auth/login", json={
+        "login": "AUTH_USER",
+        "password": "MySecretPassword123",
+    })
+    assert res_user_upper.status_code == 200
+    assert "access_token" in res_user_upper.json()
 
 
 def test_user_login_invalid_credentials(client):

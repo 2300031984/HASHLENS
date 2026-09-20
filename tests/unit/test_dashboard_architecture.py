@@ -27,7 +27,7 @@ def test_dashboard_health_calls_http_backend():
     with patch("requests.get", return_value=mock_resp) as mock_get:
         health = client.get_health()
 
-        mock_get.assert_called_once_with("http://test-backend:8000/api/v1/health", timeout=3)
+        mock_get.assert_called_once_with("http://test-backend:8000/api/v1/health", timeout=15)
         assert health["status"] == "online"
         assert health["chain_health"] == "CHAIN_VALID"
         assert health["database"] == "healthy"
