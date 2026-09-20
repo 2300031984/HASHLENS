@@ -35,6 +35,8 @@ services:
           type: web
           name: hashlens-dashboard
           envVarKey: RENDER_EXTERNAL_URL
+      - key: JWT_SECRET_KEY
+        generateValue: true
     healthCheckPath: /api/v1/health
 
   - type: web
@@ -45,6 +47,8 @@ services:
     plan: free
     region: oregon
     envVars:
+      - key: APP_ENV
+        value: production
       - key: API_BASE_URL
         fromService:
           type: web
